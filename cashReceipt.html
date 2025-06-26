@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Online Cash Receipt Generating System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+  <style>
+    body {
+      background-color: #f3f4f6;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    header, main {
+      max-width: 960px;
+      margin: auto;
+    }
+    header h1 {
+      font-size: 24px;
+      color: #1d4ed8;
+      text-align: center;
+    }
+    header p {
+      text-align: center;
+      color: #4b5563;
+      font-size: 14px;
+    }
+    .card {
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
+    input, table {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    input {
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+    }
+    table {
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 8px;
+      font-size: 14px;
+    }
+    th {
+      background-color: #e0f2fe;
+      text-align: left;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-blue {
+      background-color: #2563eb;
+      color: white;
+    }
+    .btn-green {
+      background-color: #16a34a;
+      color: white;
+    }
+    .btn-grey {
+      background-color: #9ca3af;
+      color: #1f2937;
+    }
+    .totals {
+      text-align: right;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .mt-3 { margin-top: 12px; }
+    .mb-2 { margin-bottom: 8px; }
+    .hidden { display: none; }
+    .receipt { background-color: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #d1d5db; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Supermarket Online Cash Receipt Generator</h1>
+    <p>Enter items purchased and generate a printable cash receipt instantly.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <form id="receiptForm">
+        <label for="customerName">Customer Name:</label>
+        <input type="text" id="customerName" placeholder="Enter Customer Name" required>
+
+        <table id="itemsTable">
+          <thead>
+            <tr>
+              <th>Item Name</th>
+              <th>Quantity</th>
+              <th>Unit Price (₵)</th>
+              <th>Total (₵)</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody">
+            <tr class="item-row">
+              <td><input type="text" name="itemName" placeholder="item name" required></td>
+              <td><input type="number" name="quantity" value="1" min="1" required></td>
+              <td><input type="number" name="unitPrice" value="0.00" min="0" step="0.01" required></td>
+              <td class="text-right total-cell">₵0.00</td>
+              <td class="text-center"><button type="button" class="remove-item"><i class="fas fa-trash-alt"></i></button></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <button type="button" id="addItemBtn" class="btn btn-blue mt-3"><i class="fas fa-plus"></i> Add Item</button>
+
+        <div class="totals">
+          <p>Subtotal: ₵<span id="subtotal">0.00</span></p>
+          <p>VAT (12.5%): ₵<span id="vat">0.00</span></p>
+          <p>Total: ₵<span id="total">0.00</span></p>
+        </div>
+
+        <button type="submit" class="btn btn-green mt-3">Generate Receipt</button>
+      </form>
+    </section>
+
+    <section id="receiptSection" class="receipt hidden">
+      <h2 class="text-center">Cash Receipt</h2>
+      <p><strong>Customer Name:</strong> <span id="receiptCustomerName"></span></p>
+      <p><strong>Date:</strong> <span id="receiptDate"></span></p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Item Name</th>
+            <th>Quantity</th>
+            <th>Unit Price (₵)</th>
+            <th>Total (₵)</th>
+          </tr>
+        </thead>
+        <tbody id="receiptItemsBody"></tbody>
+      </table>
+
+      <div class="totals">
+        <p>Subtotal: ₵<span id="receiptSubtotal">0.00</span></p>
+        <p>VAT (12.5%): ₵<span id="receiptVAT">0.00</span></p>
+        <p>Total: ₵<span id="receiptTotal">0.00</span></p>
+      </div>
+
+      <button id="printBtn" class="btn btn-blue">Print</button>
+      <button id="newReceiptBtn" class="btn btn-grey">New Receipt</button>
+    </section>
+  </main>
+
+  <script>
+    const VAT_RATE = 0.125;
+    const addItemBtn = document.getElementById("addItemBtn");
+    const itemsBody = document.getElementById("itemsBody");
+    const subtotalEl = document.getElementById("subtotal");
+    const vatEl = document.getElementById("vat");
+    const totalEl = document.getElementById("total");
+    const receiptForm = document.getElementById("receiptForm");
+    const receiptSection = document.getElementById("receiptSection");
+    const receiptCustomerName = document.getElementById("receiptCustomerName");
+    const receiptDate = document.getElementById("receiptDate");
+    const receiptItemsBody = document.getElementById("receiptItemsBody");
+    const receiptSubtotal = document.getElementById("receiptSubtotal");
+    const receiptVAT = document.getElementById("receiptVAT");
+    const receiptTotal = document.getElementById("receiptTotal");
+    const printBtn = document.getElementById("printBtn");
+    const newReceiptBtn = document.getElementById("newReceiptBtn");
+
+    function updateTotals() {
+      let subtotal = 0;
+      const rows = itemsBody.querySelectorAll("tr.item-row");
+      rows.forEach(row => {
+        const qty = parseFloat(row.querySelector('input[name="quantity"]').value) || 0;
+        const price = parseFloat(row.querySelector('input[name="unitPrice"]').value) || 0;
+        const total = qty * price;
+        row.querySelector(".total-cell").textContent = ₵${total.toFixed(2)};
+        subtotal += total;
+      });
+      const vat = subtotal * VAT_RATE;
+      const total = subtotal + vat;
+      subtotalEl.textContent = subtotal.toFixed(2);
+      vatEl.textContent = vat.toFixed(2);
+      totalEl.textContent = total.toFixed(2);
+    }
+
+    function createItemRow() {
+      const row = document.createElement("tr");
+      row.className = "item-row";
+      row.innerHTML = `
+        <td><input type="text" name="itemName" required></td>
+        <td><input type="number" name="quantity" value="1" min="1" required></td>
+        <td><input type="number" name="unitPrice" value="0.00" min="0" step="0.01" required></td>
+        <td class="text-right total-cell">₵0.00</td>
+        <td class="text-center"><button type="button" class="remove-item"><i class="fas fa-trash-alt"></i></button></td>
+      `;
+      attachListeners(row);
+      return row;
+    }
+
+    function attachListeners(row) {
+      row.querySelector('input[name="quantity"]').addEventListener("input", updateTotals);
+      row.querySelector('input[name="unitPrice"]').addEventListener("input", updateTotals);
+      row.querySelector(".remove-item").addEventListener("click", () => {
+        if (itemsBody.rows.length > 1) {
+          row.remove();
+          updateTotals();
+        }
+      });
+    }
+
+    document.querySelectorAll(".item-row").forEach(attachListeners);
+
+    addItemBtn.addEventListener("click", () => {
+      const row = createItemRow();
+      itemsBody.appendChild(row);
+    });
+
+    receiptForm.addEventListener("submit", e => {
+      e.preventDefault();
+      if (!receiptForm.checkValidity()) {
+        receiptForm.reportValidity();
+        return;
+      }
+
+      const name = document.getElementById("customerName").value;
+      const date = new Date().toLocaleString();
+      const items = Array.from(itemsBody.querySelectorAll("tr.item-row")).map(row => {
+        const itemName = row.querySelector('input[name="itemName"]').value;
+        const quantity = parseFloat(row.querySelector('input[name="quantity"]').value);
+        const unitPrice = parseFloat(row.querySelector('input[name="unitPrice"]').value);
+        return { itemName, quantity, unitPrice, total: quantity * unitPrice };
+      });
+
+      const subtotal = items.reduce((sum, i) => sum + i.total, 0);
+      const vat = subtotal * VAT_RATE;
+      const total = subtotal + vat;
+
+      receiptCustomerName.textContent = name;
+      receiptDate.textContent = date;
+      receiptItemsBody.innerHTML = "";
+      items.forEach(i => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${i.itemName}</td>
+          <td>${i.quantity}</td>
+          <td>₵${i.unitPrice.toFixed(2)}</td>
+          <td>₵${i.total.toFixed(2)}</td>
+        `;
+        receiptItemsBody.appendChild(row);
+      });
+
+      receiptSubtotal.textContent = subtotal.toFixed(2);
+      receiptVAT.textContent = vat.toFixed(2);
+      receiptTotal.textContent = total.toFixed(2);
+
+      receiptForm.classList.add("hidden");
+      receiptSection.classList.remove("hidden");
+    });
+
+    printBtn.addEventListener("click", () => window.print());
+    newReceiptBtn.addEventListener("click", () => {
+      receiptForm.reset();
+      receiptForm.classList.remove("hidden");
+      receiptSection.classList.add("hidden");
+      itemsBody.innerHTML = "";
+      const row = createItemRow();
+      itemsBody.appendChild(row);
+      updateTotals();
+    });
+
+    updateTotals();
+  </script>
+</body>
+</html>
